@@ -17,7 +17,7 @@ using Gridap,                # Main library for FEM analysis
     WriteVTK,
     Dates
 
-include("src/CustomModif/CustomModif.jl")
+include("script_utils.jl")
 
 # ==============================================================================
 # INPUT PARAMETERS FROM COMMAND LINE
@@ -296,7 +296,7 @@ function main(mesh_partition, distribute, el_size, path)
         vel_ext,     # Velocity regularization
         φh;          # Initial level-set function
         γ,           # Evolution time step
-        # maxiter = 1,  # ← Přidej toto pro test
+        maxiter = 1,  # ← Přidej toto pro test
         verbose = i_am_main(ranks),  # Output only from main process
         constraint_names = [:Vol],   # Constraint names for output
     )

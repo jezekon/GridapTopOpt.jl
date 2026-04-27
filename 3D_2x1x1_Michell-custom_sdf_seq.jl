@@ -41,7 +41,7 @@ using Gridap,
     WriteVTK,
     Dates
 
-include("src/CustomModif/CustomModif.jl")
+include("script_utils.jl")
 
 # ==============================================================================
 # FILE CONFIGURATION - Select via CLI argument
@@ -179,9 +179,9 @@ function main(mesh_partition, distribute, el_size, path, task_name)
     # Level-set initialization from file
     println("Level-set function initialization")
     println("Loading levelset from: $LEVELSET_FILE")
-    φh =
-        load_levelset_from_file(LEVELSET_FILE, V_φ, dom, el_size[1], el_size[2], el_size[3])
-    i_am_main(ranks) && println("✓ load_levelset_from_file DONE!")
+    raw_sdf = JLD2.load(LEVELSET_FILE, "raw_sdf")
+    φh = interpolate(lsf_from_array(raw_sdf, dom; eps_zero=1e-6), V_φ)
+    i_am_main(ranks) && println("✓ Level-set loaded.")
 
     # Ersatz material interpolation
     println("Ersatz model")

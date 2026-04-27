@@ -18,7 +18,7 @@ using Gridap,
     WriteVTK,
     Dates
 
-include("src/CustomModif/CustomModif.jl")
+include("script_utils.jl")
 
 # ==============================================================================
 # STUDY CONFIGURATION
@@ -133,8 +133,8 @@ function run_single_optimization(
     # LEVEL-SET INITIALIZATION
     # ==========================================================================
     levelset_file = "data/3D_2x1x1_MBB/$(TASK_NAME)$(LEVELSET_SUFFIX)"
-    φh =
-        load_levelset_from_file(levelset_file, V_φ, dom, EL_SIZE[1], EL_SIZE[2], EL_SIZE[3])
+    raw_sdf = JLD2.load(levelset_file, "raw_sdf")
+    φh = interpolate(lsf_from_array(raw_sdf, dom; eps_zero=1e-6), V_φ)
 
     # ==========================================================================
     # ERSATZ MATERIAL

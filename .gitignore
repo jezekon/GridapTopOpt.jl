@@ -33,3 +33,5 @@ results/*
 tmp/*
 *.msh
 *.jdl2
+/.julia_depot
+/data

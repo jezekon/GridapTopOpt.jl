@@ -86,6 +86,8 @@ include("Utilities.jl")
 export SmoothErsatzMaterialInterpolation
 export update_labels!
 export initial_lsf
+export lsf_from_array
+export combine_lsfs
 export get_el_Δ
 export get_cartesian_element_sizes
 export get_element_diameters

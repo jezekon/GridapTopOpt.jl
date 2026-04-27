@@ -18,7 +18,7 @@ using Gridap,
     WriteVTK,
     Dates
 
-include("src/CustomModif/CustomModif.jl")
+include("script_utils.jl")
 
 # ==============================================================================
 # STUDY CONFIGURATION

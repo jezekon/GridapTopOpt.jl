@@ -174,6 +174,52 @@ where x is a vector with components xᵢ.
 initial_lsf(ξ,a;b=0) = x::VectorValue -> -1/4*prod(cos.(get_array(@.(ξ*pi*(x-b))))) - a/4
 
 """
+    lsf_from_array(arr::AbstractArray{<:Real,N}, domain; eps_zero=0) where N
+
+Generate a function `f(x::VectorValue)` returning the value of `arr` at the
+node of a Cartesian grid spanning `domain` nearest to `x`. The grid spacing is
+inferred from `size(arr)` (one node per array entry, i.e. `size(arr,d)-1`
+cells along axis `d`).
+
+`domain` follows the `CartesianDiscreteModel` convention
+`(x1min,x1max, x2min,x2max, ...)` and must have `2N` entries.
+
+If `eps_zero > 0`, entries of `arr` with `abs(v) < eps_zero` are clamped to
+`±eps_zero` (preserving sign) before lookup. This is a CutFEM workaround:
+exact zeros at nodes lead to ill-conditioned cuts.
+
+Caller wraps with `interpolate` to obtain an `FEFunction`, e.g.
+`φh = interpolate(lsf_from_array(arr, domain), V_φ)`.
+"""
+function lsf_from_array(arr::AbstractArray{<:Real,N}, domain; eps_zero=0) where N
+  @assert length(domain) == 2N "domain must have 2N entries (got $(length(domain)) for N=$N)"
+  origin  = ntuple(d -> domain[2d-1], N)
+  spacing = ntuple(d -> (domain[2d] - domain[2d-1]) / (size(arr,d) - 1), N)
+  npts    = size(arr)
+  data = if eps_zero > 0
+    map(v -> abs(v) < eps_zero ? (v < 0 ? -eps_zero : eps_zero) : v, arr)
+  else
+    arr
+  end
+  return x::VectorValue -> begin
+    idx = ntuple(d -> clamp(round(Int, (x[d] - origin[d]) / spacing[d]) + 1, 1, npts[d]), N)
+    data[idx...]
+  end
+end
+
+"""
+    combine_lsfs(fs::Tuple, weights::Tuple)
+
+Generate a function `f(x) = Σᵢ weightsᵢ * fsᵢ(x)`, the weighted sum of level-set
+functions. Each `fs[i]` must accept a `VectorValue` argument.
+
+Useful for blending analytic and array-sampled level sets, e.g.
+`combine_lsfs((initial_lsf(4,0.2), lsf_from_array(arr, domain)), (0.5, 0.5))`.
+"""
+combine_lsfs(fs::Tuple, weights::Tuple) =
+  x::VectorValue -> sum(w * f(x) for (f, w) in zip(fs, weights))
+
+"""
     get_cartesian_element_sizes(model)
 
 Given a CartesianDiscreteModel return the element size as a tuple.

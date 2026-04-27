@@ -42,7 +42,7 @@ using Gridap,                # Main library for FEM analysis
     WriteVTK,
     Dates
 
-include("src/CustomModif/CustomModif.jl")
+include("script_utils.jl")
 
 # ==============================================================================
 # MAIN FUNCTION - OPTIMIZATION PROBLEM DOCUMENTATION
