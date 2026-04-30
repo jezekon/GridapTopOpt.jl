@@ -28,7 +28,6 @@ const LEVELSET_FILES = [
     "3D_2x1x1_MBB_02tol_r2.0",
     "3D_2x1x1_MBB_04tol_r2.0",
     "3D_2x1x1_MBB_08tol_r2.0",
-    "3D_2x1x1_MBB_16tol_r2.0",
 ]
 const LEVELSET_SUFFIX = "_SDF_B-0.05.jld2"
 const DATA_DIR = "data/3D_2x1x1_MBB"
@@ -139,7 +138,7 @@ function main(mesh_partition, distribute, el_size, path, task_name)
     println("Level-set function initialization")
     println("Loading levelset from: $LEVELSET_FILE")
     raw_sdf = JLD2.load(LEVELSET_FILE, "raw_sdf")
-    φh = interpolate(lsf_from_array(raw_sdf, dom; eps_zero=1e-6), V_φ)
+    φh = interpolate(lsf_from_array(raw_sdf, dom; eps_zero = 1e-6), V_φ)
     i_am_main(ranks) && println("✓ Level-set loaded.")
 
     # Ersatz material interpolation

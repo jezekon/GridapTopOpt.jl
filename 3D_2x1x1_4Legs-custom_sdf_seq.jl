@@ -28,7 +28,6 @@ const LEVELSET_FILES = [
     "3D_2x1x1_4Legs_02tol_r2.0",
     "3D_2x1x1_4Legs_04tol_r2.0",
     "3D_2x1x1_4Legs_08tol_r2.0",
-    "3D_2x1x1_4Legs_16tol_r2.0",
 ]
 const LEVELSET_SUFFIX = "_SDF_B-0.05.jld2"
 const DATA_DIR = "data/3D_2x1x1_4Legs"
