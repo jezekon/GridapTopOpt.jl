@@ -8,7 +8,9 @@
 > The companion repository for the paper, containing reproduction instructions and benchmark data, is hosted at: **[jezekon/2026-Jezek-SeqTopOpt](https://github.com/jezekon/2026-Jezek-SeqTopOpt)**.
 >
 > Modifications relative to upstream:
-> - [brief list — to be filled in]
+> - Adaptive `α_min` decay in `HilbertianProjection` for warm-start convergence.
+> - SDF-based level-set initialization utilities (`lsf_from_array`, `combine_lsfs`).
+> - 3D benchmark scripts (MBB, 4-Legs) with porous and custom-SDF variants, plus reference SDF datasets under `data/`.
 ---
 
 # <img src="/assets/logo.svg" alt="drawing" width="200" align="left"/> <br/><br/>GridapTopOpt
