@@ -6,6 +6,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (fork: sequential SIMP→level-set pipeline)
+- Adaptive `α_min` decay in `HilbertianProjection` via new `α_min_decay_tol`
+  keyword. Effective lower bound is scaled by
+  `min(1, max|C| / α_min_decay_tol)`, smoothly relaxing `α_min` as constraints
+  saturate (`|C| → 0`). Suppresses oscillation around the feasible set when
+  warm-starting from near-optimal geometries; default `0.0` preserves original
+  behavior.
+- `lsf_from_array(arr, domain; eps_zero)` in `src/Utilities.jl`: builds an
+  `x -> arr[idx]` callable sampling a Cartesian array (e.g. SDF from SIMP
+  results) at the nearest node. Optional `eps_zero` clamps near-zero entries
+  with sign preservation to avoid CutFEM ill-conditioning at exact zeros.
+- `combine_lsfs(fs, weights)` in `src/Utilities.jl`: weighted sum of level-set
+  callables for blending analytic and array-sampled fields.
+- 3D benchmark scripts under repository root:
+  - `3D_2x1x1_MBB-porous.jl` / `3D_2x1x1_MBB-custom_sdf_seq.jl`
+  - `3D_2x1x1_4Legs-porous.jl` / `3D_2x1x1_4Legs-custom_sdf_seq.jl`
+  - Shared helpers in `script_utils.jl` (`visualize_boundary_conditions`,
+    `write_history_energy`).
+  - CLI-dispatched custom-SDF variants select from a predefined list of
+    JLD2 datasets via a single integer argument.
+- Reference SDF datasets under `data/3D_2x1x1_MBB/` and `data/3D_2x1x1_4Legs/`
+  (JLD2, `raw_sdf` key) for reproducing the warm-start runs.
+
 ### Changed
 - Adjusted README.md to discuss AD and link to docs.
 - Now export `StateParamMap` and `val_and_gradient`.
