@@ -138,7 +138,9 @@ function main(mesh_partition, distribute, el_size, path, task_name)
     println("Level-set function initialization")
     println("Loading levelset from: $LEVELSET_FILE")
     raw_sdf = JLD2.load(LEVELSET_FILE, "raw_sdf")
-    φh = interpolate(lsf_from_array(raw_sdf, dom; eps_zero = 1e-6), V_φ)
+    raw_sdf_f64 = Float64.(raw_sdf)
+    raw_sdf_f64[abs.(raw_sdf_f64) .< 1e-6] .= 1e-7
+    φh = interpolate(lsf_from_array(raw_sdf_f64, dom), V_φ)
     i_am_main(ranks) && println("✓ Level-set loaded.")
 
     # Ersatz material interpolation
