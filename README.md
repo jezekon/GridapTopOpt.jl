@@ -1,15 +1,14 @@
 > [!NOTE]
-> **Fork notice — modified for sequential SIMP→level-set pipeline**
+> **Fork notice**
 >
-> This is a fork of [zjwegert/GridapTopOpt.jl](https://github.com/zjwegert/GridapTopOpt.jl) with modifications supporting the sequential topology optimization framework described in:
+> This is a fork of [zjwegert/GridapTopOpt.jl](https://github.com/zjwegert/GridapTopOpt.jl).
+> The `main` branch tracks upstream. All work for the sequential topology optimization framework is on branch **[`2026-Jezek-SeqTopOpt`](https://github.com/jezekon/GridapTopOpt.jl/tree/2026-Jezek-SeqTopOpt)**.
+>
+> The framework is described in:
 >
 > Ježek, O. et al. (2026). *[paper title]*. [journal — to be updated upon acceptance].
 >
-> The companion repository for the paper, containing reproduction instructions and benchmark data, is hosted at: **[jezekon/2026-Jezek-SeqTopOpt](https://github.com/jezekon/2026-Jezek-SeqTopOpt)**.
->
-> Modifications relative to upstream:
-> - [brief list — to be filled in]
----
+> The companion repository, containing the reproduction scripts and benchmark data for the paper, is hosted at **[jezekon/2026-Jezek-SeqTopOpt](https://github.com/jezekon/2026-Jezek-SeqTopOpt)**.
 
 # <img src="/assets/logo.svg" alt="drawing" width="200" align="left"/> <br/><br/>GridapTopOpt
 
