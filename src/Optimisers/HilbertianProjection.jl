@@ -8,7 +8,7 @@ struct HilbertianProjectionMap{A}
     nC :: Int,
     orthog::OrthogonalisationMap,
     vel_ext::AbstractVelocityExtension;
-    λ=0.5, α_min=0.1, α_max=1.0, debug=false
+    λ=0.5, α_min=0.1, α_max=1.0, α_min_decay_tol=0.0, debug=false
   )
     θ  = allocate_in_domain(vel_ext.K)
     dC = [allocate_in_domain(vel_ext.K) for _ = 1:nC]
@@ -16,7 +16,7 @@ struct HilbertianProjectionMap{A}
     uhd = zero(vel_ext.U_reg)
     orth_caches = return_cache(orthog,dC,vel_ext.K)
     caches = (θ,θ_aux,dC,orth_caches,uhd)
-    params = (;λ,α_min,α_max,debug)
+    params = (;λ,α_min,α_max,α_min_decay_tol,debug)
     return new{typeof(vel_ext.K)}(orthog,vel_ext,caches,params)
   end
 end
@@ -40,7 +40,8 @@ function _update_descent_direction!(m::HilbertianProjectionMap,θ,C,dC,K,θ_aux,
 
   # Calculate αᵢ
   λ, α_min, α_max = m.params.λ, m.params.α_min, m.params.α_max
-  α, ∑α², debug_flag = compute_α(C,dC_orthog,dC,normsq,K,θ_aux,λ,α_min,α_max)
+  α_min_decay_tol = m.params.α_min_decay_tol
+  α, ∑α², debug_flag = compute_α(C,dC_orthog,dC,normsq,K,θ_aux,λ,α_min,α_max,α_min_decay_tol)
 
   # Print debug info (if requested)
   debug_print(m.orthog,θ,dC,dC_orthog,K,θ_aux,nullity,debug_flag,m.params.debug)
@@ -74,7 +75,7 @@ function project_θ!(θ,dC_orthog,normsq,K,θ_aux)
 end
 
 # Compute α coefficents using αᵢ|̄vᵢ| = λCᵢ - ∑ⱼ₌₁ⁱ⁻¹[ αⱼ(̄vⱼ⋅vᵢ)/|̄vⱼ| ]
-function compute_α(C,dC_orthog,dC,normsq,K,P,λ,α_min,α_max)
+function compute_α(C,dC_orthog,dC,normsq,K,P,λ,α_min,α_max,α_min_decay_tol)
   α = copy(C)
   for i = 1:length(C)
     if iszero(normsq[i])
@@ -91,16 +92,18 @@ function compute_α(C,dC_orthog,dC,normsq,K,P,λ,α_min,α_max)
     end
   end
 
-  # Scale α according to α_min/α_max
+  # Scale α according to α_min/α_max with adaptive α_min decay
   ∑α² = λ^2*dot(α,α)
   debug_flag = 0
+  _α_min = iszero(α_min_decay_tol) ? α_min :
+    α_min * min(one(eltype(C)), maximum(abs,C) / α_min_decay_tol)
   if ∑α² > α_max
     λ *= sqrt(α_max/∑α²)
     ∑α² = α_max
     debug_flag = 1
-  elseif ∑α² < α_min
-    λ *= sqrt(α_min/∑α²)
-    ∑α² = α_min
+  elseif _α_min > 0 && ∑α² < _α_min
+    λ *= sqrt(_α_min/∑α²)
+    ∑α² = _α_min
     debug_flag = 2
   end
   α .*= λ
@@ -150,7 +153,7 @@ struct HilbertianProjection{A} <: Optimiser
         vel_ext    :: AbstractVelocityExtension,
         φ0;
         orthog = HPModifiedGramSchmidt(),
-        λ=0.5, α_min=0.1, α_max=1.0, γ=0.1, reinit_mod = 1,
+        λ=0.5, α_min=0.1, α_max=1.0, α_min_decay_tol=0.0, γ=0.1, reinit_mod = 1,
         ls_enabled = true, ls_max_iters = 10, ls_δ_inc = 1.1, ls_δ_dec = 0.7,
         ls_ξ = 1, ls_ξ_reduce_coef = 0.0025, ls_ξ_reduce_abs_tol = 0.01,
         ls_γ_min = 0.001, ls_γ_max = 0.1,
@@ -186,6 +189,13 @@ struct HilbertianProjection{A} <: Optimiser
     `α_min = 1` ignores the objective function and instead solves a constraint satisfaction problem.
   - `α_max ∈ [0,1] = 1.0`: Controls the upper bound on the projected objective descent coeffient.
     Typically this shouldn't change unless wanting to approach the optimum 'slower'.
+  - `α_min_decay_tol = 0.0`: Tolerance for adaptive `α_min` decay. When non-zero,
+    the effective lower bound is scaled by `min(1, max|C| / α_min_decay_tol)`,
+    which lets `α_min` smoothly decay to zero as constraints approach saturation
+    (`|C| → 0`). This prevents oscillation around the feasible set near
+    convergence. The default of `0.0` disables decay (original behavior).
+    A reasonable choice is roughly an order of magnitude above the constraint
+    convergence tolerance `C_tol` (e.g. `α_min_decay_tol = 0.01` with `C_tol = 0.001`).
   - `λ = 0.5`: The rate of contraint decrease.
 
   Note that in practice we usually only adjust `α_min` to control the balance between improving the
@@ -220,7 +230,7 @@ struct HilbertianProjection{A} <: Optimiser
     vel_ext    :: AbstractVelocityExtension,
     φ0;
     orthog = HPModifiedGramSchmidt(),
-    λ=0.5, α_min=0.1, α_max=1.0, γ=0.1, reinit_mod = 1,
+    λ=0.5, α_min=0.1, α_max=1.0, α_min_decay_tol=0.0, γ=0.1, reinit_mod = 1,
     ls_enabled = true, ls_max_iters = 10, ls_δ_inc = 1.1, ls_δ_dec = 0.7,
     ls_ξ = 1, ls_ξ_reduce_coef = 0.0025, ls_ξ_reduce_abs_tol = 0.01,
     ls_γ_min = 0.001, ls_γ_max = 0.1, ls_enable_it = 1,
@@ -239,7 +249,7 @@ struct HilbertianProjection{A} <: Optimiser
     al_keys = [:J,constraint_names...,:γ]
     al_bundles = Dict(:C => constraint_names)
     history = OptimiserHistory(Float64,al_keys,al_bundles,maxiter,verbose)
-    projector = HilbertianProjectionMap(N,orthog,vel_ext;λ,α_min,α_max,debug)
+    projector = HilbertianProjectionMap(N,orthog,vel_ext;λ,α_min,α_max,α_min_decay_tol,debug)
 
     # Optimisation when not using AD
     A = ((typeof(problem.analytic_dJ) <: Function) &&
