@@ -21,6 +21,12 @@ Modules = [GridapTopOpt]
 Pages = ["Optimisers/OrthogonalisationMaps.jl"]
 ```
 
+## Null space method
+```@autodocs
+Modules = [GridapTopOpt]
+Pages = ["Optimisers/NullSpaceOptimiser.jl"]
+```
+
 ## Optimiser history
 ```@docs
 GridapTopOpt.OptimiserHistory

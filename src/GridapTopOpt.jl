@@ -132,6 +132,7 @@ export get_history
 export write_history
 export AugmentedLagrangian
 export HilbertianProjection
+export NullSpaceOptimiser
 
 include("Benchmarks.jl")
 

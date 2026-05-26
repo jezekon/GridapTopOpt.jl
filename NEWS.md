@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.5.0] - 2025-##-##
 
 ### Added
+- Added `NullSpaceOptimiser`, an equality-constrained null-space gradient-flow method
+  based on Feppon, Allaire & Dapogny (2019).
 - Added option for AD type in `StateMaps`.
 - Added `compute_cut` option to `EmbeddedCollection`. This indicates whether to compute cut.
   geometries. If false, the recipes will be called with only `φh`.

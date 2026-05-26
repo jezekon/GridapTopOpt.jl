@@ -250,3 +250,4 @@ end
 include("OrthogonalisationMaps.jl")
 include("AugmentedLagrangian.jl")
 include("HilbertianProjection.jl")
+include("NullSpaceOptimiser.jl")
