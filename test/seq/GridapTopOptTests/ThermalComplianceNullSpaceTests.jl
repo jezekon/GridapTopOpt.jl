@@ -2,6 +2,7 @@ module ThermalComplianceNullSpaceTests
 using Test
 
 using Gridap, GridapTopOpt
+using GridapTopOpt: WithAutoDiff, NoAutoDiff
 
 """
   (Serial) Minimum thermal compliance with null-space optimiser in 2D.
@@ -9,17 +10,116 @@ using Gridap, GridapTopOpt
   Optimisation problem:
       Min J(Ω) = ∫ κ*∇(u)⋅∇(u) dΩ
         Ω
-    s.t., Vol(Ω) = vf,
+    s.t., Vol(Ω) = vf  (or Vol(Ω) ≤ vf when treated as an inequality),
           ⎡u∈V=H¹(Ω;u(Γ_D)=0),
           ⎣∫ κ*∇(u)⋅∇(v) dΩ = ∫ v dΓ_N, ∀v∈V.
 """
-function main(;order,AD)
+function main(;order,AD_case,ineq=false)
   ## Parameters
   xmax = ymax = 1.0
   prop_Γ_N = 0.2
   prop_Γ_D = 0.2
   dom = (0,xmax,0,ymax)
   el_size = (10,10)
+  γ = 0.1
+  γ_reinit = 0.5
+  max_steps = floor(Int,order*minimum(el_size)/10)
+  tol = 1/(5*order^2)/minimum(el_size)
+  κ = 1
+  # When the volume is an inequality constraint, use a low target so the initial
+  # design is over-budget and the bounded active-set QP path is exercised.
+  vf = ineq ? 0.1 : 0.4
+  η_coeff = 2
+  α_coeff = 4max_steps*γ
+
+  ## FE Setup
+  model = CartesianDiscreteModel(dom,el_size);
+  el_Δ = get_el_Δ(model)
+  f_Γ_D(x) = (x[1] ≈ 0.0 && (x[2] <= ymax*prop_Γ_D + eps() ||
+      x[2] >= ymax-ymax*prop_Γ_D - eps()))
+  f_Γ_N(x) = (x[1] ≈ xmax && ymax/2-ymax*prop_Γ_N/2 - eps() <= x[2] <=
+      ymax/2+ymax*prop_Γ_N/2 + eps())
+  update_labels!(1,model,f_Γ_D,"Gamma_D")
+  update_labels!(2,model,f_Γ_N,"Gamma_N")
+
+  ## Triangulations and measures
+  Ω = Triangulation(model)
+  Γ_N = BoundaryTriangulation(model,tags="Gamma_N")
+  dΩ = Measure(Ω,2*order)
+  dΓ_N = Measure(Γ_N,2*order)
+  vol_D = sum(∫(1)dΩ)
+
+  ## Spaces
+  reffe_scalar = ReferenceFE(lagrangian,Float64,order)
+  V = TestFESpace(model,reffe_scalar;dirichlet_tags=["Gamma_D"])
+  U = TrialFESpace(V,0.0)
+  V_φ = TestFESpace(model,reffe_scalar)
+  V_reg = TestFESpace(model,reffe_scalar;dirichlet_tags=["Gamma_N"])
+  U_reg = TrialFESpace(V_reg,0)
+
+  ## Create FE functions
+  φh = interpolate(initial_lsf(4,0.2),V_φ)
+
+  ## Interpolation and weak form
+  interp = SmoothErsatzMaterialInterpolation(η = η_coeff*maximum(el_Δ))
+  I,H,DH,ρ = interp.I,interp.H,interp.DH,interp.ρ
+
+  a(u,v,φ) = ∫((I ∘ φ)*κ*∇(u)⋅∇(v))dΩ
+  l(v,φ) = ∫(v)dΓ_N
+
+  ## Optimisation functionals
+  J(u,φ) = ∫((I ∘ φ)*κ*∇(u)⋅∇(u))dΩ
+  dJ(q,u,φ) = ∫(κ*∇(u)⋅∇(u)*q*(DH ∘ φ)*(norm ∘ ∇(φ)))dΩ;
+  Vol(u,φ) = ∫(((ρ ∘ φ) - vf)/vol_D)dΩ;
+  dVol(q,u,φ) = ∫(-1/vol_D*q*(DH ∘ φ)*(norm ∘ ∇(φ)))dΩ
+
+  ## Finite difference solver and level set function
+  evo = FiniteDifferenceEvolver(FirstOrderStencil(2,Float64),model,V_φ;max_steps)
+  reinit = FiniteDifferenceReinitialiser(FirstOrderStencil(2,Float64),model,V_φ;tol,γ_reinit)
+  ls_evo = LevelSetEvolution(evo,reinit)
+
+  ## Setup solver and FE operators
+  state_map = AffineFEStateMap(a,l,U,V,V_φ)
+  pcfs = if AD_case == :no_ad
+    PDEConstrainedFunctionals(J,[Vol],state_map,analytic_dJ=dJ,analytic_dC=[dVol])
+  elseif AD_case == :with_ad
+    PDEConstrainedFunctionals(J,[Vol],state_map)
+  else
+    @error "AD case not defined"
+  end
+
+  ## Hilbertian extension-regularisation problems
+  α = α_coeff*maximum(el_Δ)
+  a_hilb(p,q) =∫(α^2*∇(p)⋅∇(q) + p*q)dΩ;
+  vel_ext = VelocityExtension(a_hilb,U_reg,V_reg)
+
+  ## Optimiser
+  optimiser = NullSpaceOptimiser(pcfs,ls_evo,vel_ext,φh;
+    is_inequality=[ineq],dt=0.01,verbose=true,constraint_names=[:Vol])
+
+  AD_case == :with_ad && @test typeof(optimiser) <: NullSpaceOptimiser{WithAutoDiff}
+  AD_case == :no_ad   && @test typeof(optimiser) <: NullSpaceOptimiser{NoAutoDiff}
+
+  # Do a few iterations
+  vars, state = iterate(optimiser)
+  vars, state = iterate(optimiser,state)
+  true
+end
+
+"""
+  (Serial) Convergence of the null-space optimiser on the 2D thermal problem.
+
+  Guards against directional errors (e.g. a wrong velocity sign turns descent
+  into ascent): the volume constraint must be driven to feasibility and the
+  objective must decrease along the constraint manifold afterwards.
+"""
+function main_convergence(;order=1,dt=0.03,maxiter=50)
+  ## Parameters
+  xmax = ymax = 1.0
+  prop_Γ_N = 0.2
+  prop_Γ_D = 0.2
+  dom = (0,xmax,0,ymax)
+  el_size = (20,20)
   γ = 0.1
   γ_reinit = 0.5
   max_steps = floor(Int,order*minimum(el_size)/10)
@@ -77,11 +177,7 @@ function main(;order,AD)
 
   ## Setup solver and FE operators
   state_map = AffineFEStateMap(a,l,U,V,V_φ)
-  pcfs = if AD
-    PDEConstrainedFunctionals(J,[Vol],state_map,analytic_dJ=dJ,analytic_dC=[dVol])
-  else
-    PDEConstrainedFunctionals(J,[Vol],state_map)
-  end
+  pcfs = PDEConstrainedFunctionals(J,[Vol],state_map,analytic_dJ=dJ,analytic_dC=[dVol])
 
   ## Hilbertian extension-regularisation problems
   α = α_coeff*maximum(el_Δ)
@@ -90,11 +186,20 @@ function main(;order,AD)
 
   ## Optimiser
   optimiser = NullSpaceOptimiser(pcfs,ls_evo,vel_ext,φh;
-    γ,verbose=true,constraint_names=[:Vol])
+    dt,maxiter,verbose=false,constraint_names=[:Vol])
+  for _ in optimiser end
 
-  # Do a few iterations
-  vars, state = iterate(optimiser)
-  vars, state = iterate(optimiser,state)
+  h = get_history(optimiser)
+  J_h, Vol_h = h[:J], h[:Vol]
+
+  # The initial design must be infeasible for the test to be meaningful.
+  @test abs(Vol_h[1]) > 0.05
+  # The range-space step must drive the constraint violation to (near) zero ...
+  @test abs(Vol_h[end]) < 0.01
+  # ... and the null-space step must then decrease the objective along the
+  # constraint manifold. A sign error in the velocity fails both checks.
+  it_f = findfirst(v -> abs(v) < 0.01, Vol_h)
+  @test !isnothing(it_f) && J_h[end] < J_h[it_f]
   true
 end
 
@@ -174,7 +279,7 @@ function main_3d(;order)
 
   ## Optimiser
   optimiser = NullSpaceOptimiser(pcfs,ls_evo,vel_ext,φh;
-    γ,verbose=true,constraint_names=[:Vol])
+    dt=0.01,verbose=true,constraint_names=[:Vol])
 
   # Do a few iterations
   vars, state = iterate(optimiser)
@@ -183,9 +288,13 @@ function main_3d(;order)
 end
 
 # Test that these run successfully
-@test main(;order=1,AD=true)
-@test main(;order=2,AD=true)
-@test main(;order=1,AD=false)
+@test main(;order=1,AD_case=:with_ad)
+@test main(;order=2,AD_case=:with_ad)
+@test main(;order=1,AD_case=:no_ad)
+@test main(;order=1,AD_case=:with_ad,ineq=true)
+@test main(;order=1,AD_case=:no_ad,ineq=true)
 @test main_3d(;order=1)
+# Convergence guard against directional errors
+@test main_convergence()
 
 end # module

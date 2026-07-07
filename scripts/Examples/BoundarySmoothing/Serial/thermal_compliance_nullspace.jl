@@ -19,6 +19,7 @@ function main(path="./results/thermal_compliance_nullspace/")
   dom = (0,xmax,0,ymax)
   el_size = (200,200)
   γ = 0.1
+  dt = 0.02
   γ_reinit = 0.5
   max_steps = floor(Int,order*minimum(el_size)/10)
   tol = 1/(5*order^2)/minimum(el_size)
@@ -86,7 +87,7 @@ function main(path="./results/thermal_compliance_nullspace/")
 
   ## Optimiser
   optimiser = NullSpaceOptimiser(pcfs,ls_evo,vel_ext,φh;
-    γ,verbose=true,constraint_names=[:Vol])
+    dt,verbose=true,constraint_names=[:Vol])
   for (it,uh,φh) in optimiser
     data = ["φ"=>φh,"H(φ)"=>(H ∘ φh),"|∇(φ)|"=>(norm ∘ ∇(φh)),"uh"=>uh]
     iszero(it % iter_mod) && writevtk(Ω,path*"out$it",cellfields=data)

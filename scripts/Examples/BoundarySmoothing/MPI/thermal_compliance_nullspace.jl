@@ -23,6 +23,7 @@ function main(mesh_partition,distribute,path)
   dom = (0,xmax,0,ymax)
   el_size = (200,200)
   γ = 0.1
+  dt = 0.02
   γ_reinit = 0.5
   max_steps = floor(Int,order*minimum(el_size)/10)
   tol = 1/(5order^2)/minimum(el_size)
@@ -87,7 +88,7 @@ function main(mesh_partition,distribute,path)
   vel_ext = VelocityExtension(a_hilb,U_reg,V_reg)
 
   ## Optimiser
-  optimiser = NullSpaceOptimiser(pcfs,ls_evo,vel_ext,φh;γ,
+  optimiser = NullSpaceOptimiser(pcfs,ls_evo,vel_ext,φh;dt,
     verbose=i_am_main(ranks),constraint_names=[:Vol])
   for (it, uh, φh) in optimiser
     data = ["φ"=>φh,"H(φ)"=>(H ∘ φh),"|∇(φ)|"=>(norm ∘ ∇(φh)),"uh"=>uh]

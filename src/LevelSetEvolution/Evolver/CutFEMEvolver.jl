@@ -76,6 +76,8 @@ function get_ls_space(s::CutFEMEvolver)
   s.space
 end
 
+get_max_steps(s::CutFEMEvolver) = s.params.max_steps
+
 function evolve!(s::CutFEMEvolver,φh,velh,γ)
   ls, V_φ, assem, params = s.ode_ls, s.space, s.assembler, s.params
   hmin, max_steps, correct_ls, uhd = params.hmin, params.max_steps, params.correct_ls, params.uhd

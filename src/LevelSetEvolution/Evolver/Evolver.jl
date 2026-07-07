@@ -25,6 +25,15 @@ function get_ls_space(::Evolver)
 end
 
 """
+    get_max_steps(m::Evolver)
+
+Return the number of pseudo-time steps taken per `evolve!` call.
+"""
+function get_max_steps(::Evolver)
+  @abstractmethod
+end
+
+"""
     evolve!(::Evolver,φ::AbstractVector,vel::AbstractVector,γ)
 
 Evolve the level-set function `φ` using a velocity field `vel` and parameter

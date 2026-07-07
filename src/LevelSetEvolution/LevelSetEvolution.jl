@@ -18,6 +18,9 @@ end
 function get_ls_space(::AbstractLevelSetEvolution)
   @abstractmethod
 end
+function get_max_steps(::AbstractLevelSetEvolution)
+  @abstractmethod
+end
 
 #### LevelSetEvolution
 """
@@ -82,6 +85,15 @@ Return the finite element space used for the level-set function.
 """
 function get_ls_space(s::LevelSetEvolution)
   get_ls_space(get_evolver(s))
+end
+
+"""
+    get_max_steps(s::LevelSetEvolution)
+
+Return the number of pseudo-time steps taken per `evolve!` call.
+"""
+function get_max_steps(s::LevelSetEvolution)
+  get_max_steps(get_evolver(s))
 end
 
 include("Utilities/Helpers.jl")

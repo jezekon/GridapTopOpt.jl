@@ -92,7 +92,7 @@ function main(distribute,mesh_partition;order,AD)
 
   ## Optimiser
   optimiser = NullSpaceOptimiser(pcfs,ls_evo,vel_ext,φh;
-    γ,verbose=i_am_main(ranks),constraint_names=[:Vol])
+    dt=0.01,verbose=i_am_main(ranks),constraint_names=[:Vol])
 
   # Do a few iterations
   vars, state = iterate(optimiser)
@@ -177,7 +177,7 @@ function main_3d(distribute,mesh_partition,;order)
 
   ## Optimiser
   optimiser = NullSpaceOptimiser(pcfs,ls_evo,vel_ext,φh;
-    γ,verbose=i_am_main(ranks),constraint_names=[:Vol])
+    dt=0.01,verbose=i_am_main(ranks),constraint_names=[:Vol])
 
   # Do a few iterations
   vars, state = iterate(optimiser)
