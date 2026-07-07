@@ -178,7 +178,7 @@ is_cache_built(c::StateParamMapCache) = c.cache_built
 
 function StateParamMapCache(∂F∂u,∂F∂φ)
   plb_cache = (nothing, nothing, ∂F∂u, ∂F∂φ)
-  StateParamMapCache((),plb_cache,(),false,false,false)
+  StateParamMapCache((),plb_cache,(;),false,false,false)
 end
 
 function build_cache!(u_to_j::StateParamMap{A,B,C,D,1},uh,φh) where {A,B,C,D}
