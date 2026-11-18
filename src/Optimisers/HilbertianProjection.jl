@@ -268,22 +268,47 @@ function converged(m::HilbertianProjection)
   return m.converged(m)
 end
 
+"""
+    default_hp_converged(
+      m::HilbertianProjection;
+      J_tol = 0.2*maximum(get_min_dof_spacing(m.ls_evolver)),
+      C_tol = 0.001,
+      J_window = 5,
+      J_pair_mean = false
+    )
+
+Default convergence criterion of `HilbertianProjection`. At an iteration after
+`max(10,J_window)`, it returns `true` when the relative change of the objective
+against each of the last `J_window` iterations is below `J_tol` and every
+constraint satisfies `|C| < C_tol`.
+
+- `J_window = 5`: Number of previous iterations that the objective is compared with.
+- `J_pair_mean = false`: Use the mean objective of two consecutive iterations,
+  `(Jₖ + Jₖ₋₁)/2`, instead of `Jₖ`. This removes an oscillation of the objective
+  with a period of two iterations from the criterion.
+
+The defaults give the original criterion. Other values are passed with
+`converged = m -> default_hp_converged(m; J_window = 20, J_pair_mean = true)`.
+"""
 function default_hp_converged(
   m::HilbertianProjection;
   J_tol = 0.2*maximum(get_min_dof_spacing(m.ls_evolver)),
-  C_tol = 0.001
+  C_tol = 0.001,
+  J_window = 5,
+  J_pair_mean = false
 )
   h  = m.history
   it = get_last_iteration(h)
-  if it < 10
+  if it <= max(10,J_window)
     return false
   end
 
-  Ji, Ci = h[:J,it], h[:C,it]
-  J_prev = h[:J,it-5:it]
-  A = all(J -> abs(Ji - J)/abs(Ji) < J_tol, J_prev)
+  # Objective of iteration k: Jₖ, or the mean of a pair of iterations (Jₖ + Jₖ₋₁)/2
+  objective(k) = J_pair_mean ? (h[:J,k] + h[:J,k-1])/2 : h[:J,k]
+  Ji, Ci = objective(it), h[:C,it]
+  A = all(k -> abs(Ji - objective(k))/abs(Ji) < J_tol, it-J_window:it)
   B = all(C -> abs(C) < C_tol, Ci)
-  return (it > 10) && A && B
+  return A && B
 end
 
 function default_has_oscillations(m::HilbertianProjection,os_it;

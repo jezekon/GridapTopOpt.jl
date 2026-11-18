@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   saturate (`|C| → 0`). Suppresses oscillation around the feasible set when
   warm-starting from near-optimal geometries; default `0.0` preserves the
   original behavior.
+- `J_window` and `J_pair_mean` keywords in `default_hp_converged` (defaults `5`
+  and `false`, behavior unchanged). The objective is compared with the last
+  `J_window` iterations. With `J_pair_mean = true` the criterion uses the mean
+  objective of two consecutive iterations, `(Jₖ + Jₖ₋₁)/2`, which removes an
+  oscillation with a period of two iterations.
 
 ## [0.5.1] - 2026-9-15
 

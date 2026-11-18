@@ -13,7 +13,7 @@ using GridapTopOpt: WithAutoDiff, NoAutoDiff
           ⎡u∈V=H¹(Ω;u(Γ_D)=0),
           ⎣∫ κ*∇(u)⋅∇(v) dΩ = ∫ v dΓ_N, ∀v∈V.
 """
-function main(;order,AD_case,α_min_decay_tol=0.0)
+function main(;order,AD_case,α_min_decay_tol=0.0,check_converged=false)
   ## Parameters
   xmax = ymax = 1.0
   prop_Γ_N = 0.2
@@ -133,14 +133,65 @@ function main(;order,AD_case,α_min_decay_tol=0.0)
   # Do a few iterations
   vars, state = iterate(optimiser)
   vars, state = iterate(optimiser,state)
+  check_converged && converged_checks(optimiser)
   true
+end
+
+"""
+  Checks the options `J_window` and `J_pair_mean` of `default_hp_converged` on a
+  history with known values. The tolerances are given, J_tol = 0.002 and
+  C_tol = 0.001, so the expected results follow from the values alone.
+"""
+function converged_checks(optimiser)
+  h = optimiser.history
+  # Write the objective J and the constraint C of iterations 0, 1, ... into the history
+  function set_history!(J,C)
+    GridapTopOpt.reset!(h)
+    for k in eachindex(J)
+      h.niter += 1
+      h[:J,h.niter] = J[k]
+      h[:Vol,h.niter] = C[k]
+    end
+  end
+  converged(;kwargs...) = GridapTopOpt.default_hp_converged(optimiser;J_tol=0.002,C_tol=0.001,kwargs...)
+
+  # Constant objective, constraint met: the defaults stop at iteration 11, not at 10
+  set_history!(ones(11),zeros(11))
+  @test !converged()
+  set_history!(ones(12),zeros(12))
+  @test converged()
+
+  # Constraint not met in the last iteration
+  C = zeros(12); C[end] = 0.002
+  set_history!(ones(12),C)
+  @test !converged()
+
+  # Objective falls by 0.03 % per iteration: 0.15 % over 5 iterations, 0.6 % over 20
+  J = [1 - 3e-4*k for k = 0:29]
+  set_history!(J,zeros(30))
+  @test converged()
+  @test !converged(;J_window=20)
+
+  # Objective alternates by ±0.3 % around 1: Jₖ never meets 0.2 %, the mean of a pair does
+  J = [1 + 3e-3*(-1)^k for k = 0:29]
+  set_history!(J,zeros(30))
+  @test !converged()
+  @test !converged(;J_window=20)
+  @test converged(;J_pair_mean=true)
+  @test converged(;J_pair_mean=true,J_window=20)
+
+  # A window of 20 iterations stops at iteration 21 at the earliest
+  set_history!(J[1:21],zeros(21))
+  @test !converged(;J_pair_mean=true,J_window=20)
+  set_history!(J[1:22],zeros(22))
+  @test converged(;J_pair_mean=true,J_window=20)
 end
 
 # Test that these run successfully
 @test main(;order=1,AD_case=:with_ad)
 @test main(;order=1,AD_case=:partial_ad1)
 @test main(;order=1,AD_case=:partial_ad2)
-@test main(;order=1,AD_case=:no_ad)
+@test main(;order=1,AD_case=:no_ad,check_converged=true)
 @test main(;order=1,AD_case=:custom_pcf)
 @test main(;order=1,AD_case=:custom_pcf_analyticVol)
 # The decay tolerance reaches compute_α through the constructor
