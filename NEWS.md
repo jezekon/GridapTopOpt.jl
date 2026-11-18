@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   saturate (`|C| → 0`). Suppresses oscillation around the feasible set when
   warm-starting from near-optimal geometries; default `0.0` preserves original
   behavior.
+- `α_min_decay_power` keyword in `HilbertianProjection` (default `1`, behavior
+  unchanged). The effective lower bound is scaled by
+  `min(1, (max|C| / α_min_decay_tol)^α_min_decay_power)`. With `2`, the
+  correction of a constraint near zero is linear in `C`, as the constraint
+  step of Feppon et al. (2020).
 - `lsf_from_array(arr, domain; eps_zero)` in `src/Utilities.jl`: builds an
   `x -> arr[idx]` callable sampling a Cartesian array (e.g. SDF from SIMP
   results) at the nearest node. Optional `eps_zero` clamps near-zero entries

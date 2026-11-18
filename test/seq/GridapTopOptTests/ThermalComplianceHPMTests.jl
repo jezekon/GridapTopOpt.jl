@@ -13,7 +13,7 @@ using GridapTopOpt: WithAutoDiff, NoAutoDiff
           ⎡u∈V=H¹(Ω;u(Γ_D)=0),
           ⎣∫ κ*∇(u)⋅∇(v) dΩ = ∫ v dΓ_N, ∀v∈V.
 """
-function main(;order,AD_case)
+function main(;order,AD_case,α_min_decay_tol=0.0,α_min_decay_power=1)
   ## Parameters
   xmax = ymax = 1.0
   prop_Γ_N = 0.2
@@ -124,7 +124,8 @@ function main(;order,AD_case)
 
   ## Optimiser
   optimiser = HilbertianProjection(pcfs,ls_evo,vel_ext,φh;
-    γ,verbose=true,constraint_names=[:Vol])
+    γ,verbose=true,constraint_names=[:Vol],α_min_decay_tol,α_min_decay_power)
+  @test optimiser.projector.params.α_min_decay_power == α_min_decay_power
 
   AD_case ∈ (:with_ad,:partial_ad1,:partial_ad2) && @test typeof(optimiser) <: HilbertianProjection{WithAutoDiff}
   AD_case ∈ (:no_ad,) && @test typeof(optimiser) <: HilbertianProjection{NoAutoDiff}
@@ -142,5 +143,7 @@ end
 @test main(;order=1,AD_case=:no_ad)
 @test main(;order=1,AD_case=:custom_pcf)
 @test main(;order=1,AD_case=:custom_pcf_analyticVol)
+# The decay power reaches compute_α through the constructor
+@test main(;order=1,AD_case=:no_ad,α_min_decay_tol=0.01,α_min_decay_power=2)
 
 end # module
