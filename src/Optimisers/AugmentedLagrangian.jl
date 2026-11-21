@@ -71,7 +71,8 @@ struct AugmentedLagrangian <: Optimiser
   - `Λ_update_tol = 0.01`: Tolerance of constraint satisfaction for updating Λ. In our testing, this
     is usually set to 0.01. Some problems, may perform better with a stricter tolerance (e.g.,
     0.001 or 0.0 to always update).
-  - `converged::Function = default_hp_converged`: Convergence criteria.
+  - `converged::Function = default_al_converged`: Convergence criteria. `default_hp_converged`
+    also accepts an `AugmentedLagrangian`.
   - `debug = false`: Debug flag.
   """
   function AugmentedLagrangian(

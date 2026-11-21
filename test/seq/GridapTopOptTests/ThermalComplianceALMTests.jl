@@ -13,7 +13,7 @@ using Gridap, GridapTopOpt
           ⎡u∈V=H¹(Ω;u(Γ_D)=0),
           ⎣∫ κ*∇(u)⋅∇(v) dΩ = ∫ v dΓ_N, ∀v∈V.
 """
-function main(;order,AD)
+function main(;order,AD,check_converged=false)
   ## Parameters
   xmax = ymax = 1.0
   prop_Γ_N = 0.2
@@ -95,7 +95,50 @@ function main(;order,AD)
   # Do a few iterations
   vars, state = iterate(optimiser)
   vars, state = iterate(optimiser,state)
+  check_converged && converged_checks(optimiser)
   true
+end
+
+"""
+  Checks that `default_hp_converged` also accepts an `AugmentedLagrangian`. The
+  criterion reads only J and C from the history, so a history with known values
+  gives the same results as for `HilbertianProjection` (ThermalComplianceHPMTests.jl).
+  The tolerances are given, J_tol = 0.002 and C_tol = 0.001, except in the last
+  check, so the expected results follow from the values alone.
+"""
+function converged_checks(optimiser)
+  h = optimiser.history
+  # Write the objective J and the constraint C of iterations 0, 1, ... into the history
+  function set_history!(J,C)
+    GridapTopOpt.reset!(h)
+    for k in eachindex(J)
+      h.niter += 1
+      h[:J,h.niter] = J[k]
+      h[:Vol,h.niter] = C[k]
+    end
+  end
+  converged(;kwargs...) = GridapTopOpt.default_hp_converged(optimiser;J_tol=0.002,C_tol=0.001,kwargs...)
+
+  # Constant objective, constraint met: the defaults stop at iteration 11, not at 10
+  set_history!(ones(11),zeros(11))
+  @test !converged()
+  set_history!(ones(12),zeros(12))
+  @test converged()
+
+  # Constraint not met in the last iteration
+  C = zeros(12); C[end] = 0.002
+  set_history!(ones(12),C)
+  @test !converged()
+
+  # Objective alternates by ±0.3 % around 1: Jₖ never meets 0.2 %, the mean of a pair does
+  J = [1 + 3e-3*(-1)^k for k = 0:29]
+  set_history!(J,zeros(30))
+  @test !converged(;J_window=20)
+  @test converged(;J_pair_mean=true,J_window=20)
+
+  # The default J_tol reads the level-set evolver of the optimiser: a constant objective meets it
+  set_history!(ones(12),zeros(12))
+  @test GridapTopOpt.default_hp_converged(optimiser)
 end
 
 """
@@ -192,7 +235,7 @@ end
 # Test that these run successfully
 @test main(;order=1,AD=true)
 @test main(;order=2,AD=true)
-@test main(;order=1,AD=false)
+@test main(;order=1,AD=false,check_converged=true)
 @test main_3d(;order=1)
 
 end # module

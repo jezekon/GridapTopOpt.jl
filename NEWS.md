@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `J_window` iterations. With `J_pair_mean = true` the criterion uses the mean
   objective of two consecutive iterations, `(Jₖ + Jₖ₋₁)/2`, which removes an
   oscillation with a period of two iterations.
+- `default_hp_converged` also accepts an `AugmentedLagrangian`. The criterion
+  reads only the objective `J` and the constraints `C` of the history, which
+  both optimisers record, so both can stop with the same criterion. The
+  docstring of `AugmentedLagrangian` now gives its default criterion,
+  `default_al_converged`.
 
 ## [0.5.1] - 2026-9-15
 

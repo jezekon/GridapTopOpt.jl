@@ -270,7 +270,7 @@ end
 
 """
     default_hp_converged(
-      m::HilbertianProjection;
+      m::Union{HilbertianProjection,AugmentedLagrangian};
       J_tol = 0.2*maximum(get_min_dof_spacing(m.ls_evolver)),
       C_tol = 0.001,
       J_window = 5,
@@ -282,6 +282,10 @@ Default convergence criterion of `HilbertianProjection`. At an iteration after
 against each of the last `J_window` iterations is below `J_tol` and every
 constraint satisfies `|C| < C_tol`.
 
+The criterion reads only the objective `J` and the constraints `C` of the
+history. `AugmentedLagrangian` records both, so it also accepts an
+`AugmentedLagrangian`, and both optimisers can stop with the same criterion.
+
 - `J_window = 5`: Number of previous iterations that the objective is compared with.
 - `J_pair_mean = false`: Use the mean objective of two consecutive iterations,
   `(Jₖ + Jₖ₋₁)/2`, instead of `Jₖ`. This removes an oscillation of the objective
@@ -291,7 +295,7 @@ The defaults give the original criterion. Other values are passed with
 `converged = m -> default_hp_converged(m; J_window = 20, J_pair_mean = true)`.
 """
 function default_hp_converged(
-  m::HilbertianProjection;
+  m::Union{HilbertianProjection,AugmentedLagrangian};
   J_tol = 0.2*maximum(get_min_dof_spacing(m.ls_evolver)),
   C_tol = 0.001,
   J_window = 5,
